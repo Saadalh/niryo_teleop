@@ -1,0 +1,32 @@
+[project]
+name = "niryo-teleop"
+version = "0.1.0"
+description = "ROS 2 teleoperation pipeline between two Niryo Ned2 robots (master + actor) — workspace tooling"
+readme = "README.md"
+requires-python = "==3.12.*"
+# NOTE: ROS 2 system deps (rclpy, sensor_msgs, trajectory_msgs, ...) are
+# intentionally NOT listed here. They come from /opt/ros/jazzy via
+# --system-site-packages. Only pure-Python dev tooling goes here.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  # Pinned to system pytest (python3-pytest 7.4.4): ROS Jazzy's launch_testing
+  # pytest plugin uses the removed `path` hook arg and breaks on pytest>=8.
+  "pytest==7.4.4",
+]
+
+# uv workspace tooling only; the ROS package lives in src/niryo_teleop
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/niryo_teleop/test"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

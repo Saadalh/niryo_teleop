@@ -1,0 +1,13 @@
+# uv / python
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc
+
+# ROS 2 build artefacts (workspace root is also colcon workspace)
+build/
+install/
+log/
+
+# pytest
+.pytest_cache/

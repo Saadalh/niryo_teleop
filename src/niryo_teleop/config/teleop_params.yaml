@@ -1,0 +1,20 @@
+# Canonical teleoperation controller parameters (Ned2, 6 joints, radians).
+# Consumed by the teleoperation_controller node (executable
+# teleoperation_controller; legacy executable teleop_controller_node runs the
+# same entry point). Identity mapping is the default: scale = 1.0, offset = 0.0.
+# joint_limits_* are the Ned2 command-validation limits (ned_ros docs).
+teleoperation_controller:
+  ros__parameters:
+    master_topic: "/master/joint_states"
+    actor_topic: "/actor/joint_cmd"
+    joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    control_rate_hz: 50.0
+    joint_scale: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    joint_offsets: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    joint_limits_min: [-2.999871918328051, -1.8325957145941667, -1.3400637996813345, -2.090031779263347, -1.9200367101190883, -2.530029283691147]
+    joint_limits_max: [2.999871918328051, 0.6101671064972578, 1.4922565104552499, 2.090031779263347, 1.9228292369222795, 2.530029283691147]
+    maximum_state_age_sec: 0.5
+    stale_timeout_sec: 1.0
+    time_from_start_sec: 0.2
+    qos_depth: 10
+    require_exact_order: true

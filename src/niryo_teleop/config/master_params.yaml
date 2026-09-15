@@ -1,0 +1,25 @@
+# Master component configuration (Ned2, Chunk 3).
+#
+# Physical connection (robot IP/hostname, rosbridge port, namespace) is handled
+# by the officially supported ned-ros2-driver, NOT here. That driver bridges the
+# Ned2 ROS 1 stack to ROS 2 and publishes sensor_msgs/JointState on <input_topic>
+# below (default /joint_states, or /<namespace>/joint_states when namespaced).
+# This file only configures our validated relay to /master/joint_states.
+#
+# Hardware checklist (no code changes needed, values only):
+#   1. Set driver_topic to the driver's namespaced output if used, e.g.
+#      input_topic: "/master_raw/joint_states" with driver namespace master_raw.
+#   2. Tune publish_rate_hz to the teleop need (<= driver rate; 50 Hz default).
+#   3. Put the master arm in compliant/learning mode so joints can be moved by hand.
+#
+# Ned2 joint interface (measured state, radians, base -> tip):
+#   names = [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6], count = 6.
+master_joint_state_publisher:
+  ros__parameters:
+    input_topic: "/joint_states"
+    output_topic: "/master/joint_states"
+    joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    publish_rate_hz: 50.0
+    qos_depth: 10
+    stale_timeout_sec: 1.0
+    require_exact_joint_names: true
