@@ -1,8 +1,9 @@
 """Launch the master joint-state publisher (Chunk 3).
 
-Subscribes the Ned2 driver's joint_states and publishes measured state on
-/master/joint_states. No hardware SDK in this node; point input_topic at the
-driver's (optionally namespaced) topic via config/master_params.yaml.
+Subscribes the Ned2 driver's /master_raw/joint_states and publishes measured
+state on /master/joint_states. No hardware SDK in this node; input_topic is
+the driver's namespaced topic via config/master_params.yaml
+(currently /master_raw/joint_states).
 """
 from launch import LaunchDescription
 from launch_ros.actions import Node

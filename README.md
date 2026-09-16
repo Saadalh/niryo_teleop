@@ -131,9 +131,12 @@ Ned2 interface: 6 joints, `radians`, `[joint_1..joint_6]` base→tip, in order.
 Hardware run (actor driver still out of scope):
 
 ```bash
-# terminal 1: official driver (separate workspace, needs robot on LAN)
-source ~/ros2_drivers_ws/install/setup.bash
-ros2 launch niryo_ned_ros2_driver driver.launch.py  # set robot IP/namespace
+# terminal 1: official driver (separate workspace ~/projects/niryo_driver_ws, needs robot on LAN)
+source /opt/ros/jazzy/setup.bash
+source ~/projects/niryo_driver_ws/.venv/bin/activate  # driver venv, needs autobahn==23.6.2 (see docs/PHYSICAL_SETUP.md)
+source ~/projects/niryo_driver_ws/install/setup.bash
+ros2 launch niryo_ned_ros2_driver driver.launch.py drivers_list_file:=$HOME/projects/niryo_driver_ws/src/ned-ros2-driver/niryo_ned_ros2_driver/config/master_driver.yaml
+# master_driver.yaml: rosbridge_port 9090, robot_namespaces ["master_raw"], robot_ips ["169.254.200.200"]
 # terminal 2: this project
 source /opt/ros/jazzy/setup.bash
 source install/setup.bash

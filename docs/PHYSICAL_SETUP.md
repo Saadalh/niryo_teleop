@@ -58,33 +58,64 @@ source install/setup.bash
 
 This repo deliberately does **not** talk TCP to the robot. The officially
 supported path is `ned-ros2-driver`, which bridges the robot's ROS 1 stack to
-ROS 2 over rosbridge (`:9090`). Set it up once in a **separate** workspace:
+ROS 2 over rosbridge (`:9090`). It lives in a **separate** workspace at
+`~/projects/niryo_driver_ws` (not `~/ros2_drivers_ws`):
 
 ```bash
-mkdir -p ~/ros2_drivers_ws/src
-cd ~/ros2_drivers_ws/src
+mkdir -p ~/projects/niryo_driver_ws/src
+cd ~/projects/niryo_driver_ws/src
 git clone https://github.com/NiryoRobotics/ned-ros2-driver.git
-cd ~/ros2_drivers_ws
+cd ~/projects/niryo_driver_ws
+# driver venv uses --system-site-packages so /opt/ros/jazzy stays visible:
+uv venv --system-site-packages --python /usr/bin/python3.12 --seed
+source .venv/bin/activate
+uv pip install colcon-common-extensions colcon-ros "pytest==7.4.4" roslibpy
+# IMPORTANT (Jazzy/Ubuntu 24.04): system zope.interface is 6.1, which lacks
+# InterfaceClass.__or__. autobahn>=24 uses `ITransport | IProcessTransport`
+# and crashes at import with `TypeError: unsupported operand ... InterfaceClass`.
+# Pin the last Union-based release in the driver venv:
+.venv/bin/python -m pip install "autobahn==23.6.2"
+# Runtime message deps required by package.xml exec_depends (else
+# `Failed to create driver: No module named 'control_msgs'` after the
+# autobahn fix):
+sudo apt install -y ros-jazzy-control-msgs ros-jazzy-controller-manager-msgs ros-jazzy-moveit-msgs
 rosdep install --from-paths src --ignore-src -r -y
 source /opt/ros/jazzy/setup.bash
 colcon build
 ```
 
-Configure which robot to bridge (file inside the driver package,
-`config/drivers_list.yaml`): put the **master's** hostname/IP and a namespace,
-e.g. namespace `master_raw` so its topics don't collide with anything local:
+This project keeps a dedicated config for the master arm alongside the
+upstream default, at
+`src/ned-ros2-driver/niryo_ned_ros2_driver/config/master_driver.yaml`
+(upstream `config/drivers_list.yaml` untouched):
 
 ```yaml
 rosbridge_port: 9090
-robot_namespaces: ["master_raw"]
-robot_ips: ["ned2-aa-bbb-ccc.local"]   # <-- your master's address
+robot_namespaces:
+  - "master_raw"
+robot_ips:
+  - "169.254.200.200"   # <-- master Ned2, verified pingable
 ```
 
-Launch and verify the raw driver topic exists:
+Rebuild after adding/editing that file so it is reinstalled to
+`install/.../share/niryo_ned_ros2_driver/config/master_driver.yaml`
+(`setup.py` globs `config/*.yaml`):
 
 ```bash
-source ~/ros2_drivers_ws/install/setup.bash
-ros2 launch niryo_ned_ros2_driver driver.launch.py
+cd ~/projects/niryo_driver_ws
+source /opt/ros/jazzy/setup.bash
+source .venv/bin/activate
+colcon build --packages-select niryo_ned_ros2_driver
+```
+
+Launch and verify the raw driver topic exists (activate the driver venv
+first so `python3` resolves to `.venv/bin/python` with the pinned autobahn):
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/projects/niryo_driver_ws/.venv/bin/activate
+source ~/projects/niryo_driver_ws/install/setup.bash
+ros2 launch niryo_ned_ros2_driver driver.launch.py drivers_list_file:=$HOME/projects/niryo_driver_ws/src/ned-ros2-driver/niryo_ned_ros2_driver/config/master_driver.yaml
 # new terminal:
 ros2 topic list | grep joint_states     # expect /master_raw/joint_states
 ros2 topic hz --window 30 /master_raw/joint_states   # note the real rate
@@ -178,6 +209,9 @@ publishing actor commands on /actor/joint_cmd ...
 
 | Symptom | Likely cause → fix |
 |---|---|
+| `ros2_driver` dies: `TypeError ... InterfaceClass` in `autobahn/twisted/util.py: peer2str` | autobahn>=24 needs `zope.interface>=7` but venv resolves system 6.1 via `--system-site-packages` → in driver venv run `.venv/bin/python -m pip install "autobahn==23.6.2"`, rebuild, relaunch with venv activated |
+| `Failed to create driver: No module named 'control_msgs'` | Missing runtime msg deps → `sudo apt install -y ros-jazzy-control-msgs ros-jazzy-controller-manager-msgs ros-jazzy-moveit-msgs`, then relaunch |
+| `Failed to create driver: Timeout to connect to ROSBridge at ws://...:9090` | Robot off / cable unplugged / wrong IP / rosbridge down → `ping -c 3 169.254.200.200`, check TCP 9090, power + Ethernet, retry launch (takes ~12 s to init when healthy) |
 | No `/master_raw/joint_states` | Driver misconfigured / robot unreachable → re-check IP, `ping`, rosbridge port 9090, driver logs |
 | `no joint_states received yet on …` | `input_topic` doesn't match the driver's (namespaced?) topic → fix `master_params.yaml`, rebuild |
 | `dropping invalid master state (unexpected joint names…)` | Wrong robot model or namespace collision → verify 6 joints `joint_1..6` via `ros2 topic echo --once` |

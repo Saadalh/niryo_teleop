@@ -4,12 +4,12 @@ Pipeline::
 
     Physical Ned2 master
         -> ned-ros2-driver (official ROS 2 bridge, rosbridge) publishes
-           sensor_msgs/JointState on <input_topic> (default /joint_states)
+           sensor_msgs/JointState on <input_topic> (default /master_raw/joint_states)
         -> MasterJointStatePublisher (this node, validated relay)
         -> /master/joint_states (sensor_msgs/JointState, measured state)
 
 Architecture note (Chunk 1/3 rule: do not duplicate the Niryo stack):
-the driver's ``/joint_states`` already *is* the measured master state, so this
+the driver's ``/master_raw/joint_states`` already *is* the measured master state, so this
 node does NOT poll the robot over TCP (no pyniryo polling loop). It subscribes,
 validates, rate-limits, and republishes under the project namespace. The
 physical connection (robot IP/hostname, rosbridge port, namespace) is handled
@@ -114,7 +114,7 @@ def build_master_msg(msg: JointState, expected_names: List[str]) -> JointState:
 class MasterJointStatePublisher(Node):
     def __init__(self) -> None:
         super().__init__('master_joint_state_publisher')
-        self.declare_parameter('input_topic', '/joint_states')
+        self.declare_parameter('input_topic', '/master_raw/joint_states')
         self.declare_parameter('output_topic', '/master/joint_states')
         self.declare_parameter('joint_names', NED2_JOINT_NAMES)
         self.declare_parameter('publish_rate_hz', 50.0)

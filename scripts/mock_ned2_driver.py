@@ -9,7 +9,7 @@ master_joint_state_publisher without hardware.
 NEVER use against a real robot; launch the real ned-ros2-driver instead.
 
 Usage (each in its own terminal, workspace sourced):
-    python3 scripts/mock_ned2_driver.py --topic /joint_states --rate 50 --mode sine
+    python3 scripts/mock_ned2_driver.py --topic /master_raw/joint_states --rate 50 --mode sine
     ros2 run niryo_teleop master_joint_state_publisher
     ros2 topic echo /master/joint_states
 """
@@ -58,7 +58,7 @@ class MockDriver(Node):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--topic', default='/joint_states')
+    ap.add_argument('--topic', default='/master_raw/joint_states')
     ap.add_argument('--rate', type=float, default=50.0)
     ap.add_argument('--mode', choices=['sine', 'static'], default='sine')
     args = ap.parse_args()
