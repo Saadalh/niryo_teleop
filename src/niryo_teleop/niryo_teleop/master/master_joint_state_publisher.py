@@ -11,7 +11,11 @@ Pipeline::
 Architecture note (Chunk 1/3 rule: do not duplicate the Niryo stack):
 the driver's ``/master_raw/joint_states`` already *is* the measured master state, so this
 node does NOT poll the robot over TCP (no pyniryo polling loop). It subscribes,
-validates, rate-limits, and republishes under the project namespace. The
+validates, and immediately republishes under the project namespace (no rate
+limiting: every valid message is republished once). Timestamps are
+workstation-local: the incoming Niryo header.stamp is NOT trusted (robot clock
+unsynced), each output is re-stamped with this node's ROS 2 clock at relay
+time; frame_id is preserved. The
 physical connection (robot IP/hostname, rosbridge port, namespace) is handled
 by ``ned-ros2-driver`` (see README hardware section); this node only needs the
 driver's topic name.
@@ -84,15 +88,18 @@ def validate_joint_state(
     return True, 'ok'
 
 
-def build_master_msg(msg: JointState, expected_names: List[str]) -> JointState:
+def build_master_msg(msg: JointState, expected_names: List[str], stamp) -> JointState:
     """Build the /master/joint_states message from a validated driver message.
 
-    Preserves the measured header.stamp and joint ordering. Forwards velocity
-    and effort only when their length matches; otherwise leaves them empty.
+    Re-stamps with the workstation ROS 2 clock value supplied by the caller
+    (the incoming Niryo header.stamp is not trusted). Preserves frame_id and
+    joint ordering. Forwards velocity and effort only when their length
+    matches; otherwise leaves them empty.
     Caller must run validate_joint_state() first.
     """
     out = JointState()
-    out.header = msg.header
+    out.header.frame_id = msg.header.frame_id
+    out.header.stamp = stamp
     if list(msg.name) == list(expected_names):
         out.name = list(expected_names)
         out.position = list(msg.position)
@@ -117,7 +124,6 @@ class MasterJointStatePublisher(Node):
         self.declare_parameter('input_topic', '/master_raw/joint_states')
         self.declare_parameter('output_topic', '/master/joint_states')
         self.declare_parameter('joint_names', NED2_JOINT_NAMES)
-        self.declare_parameter('publish_rate_hz', 50.0)
         self.declare_parameter('qos_depth', 10)
         self.declare_parameter('stale_timeout_sec', 1.0)
         self.declare_parameter('require_exact_joint_names', True)
@@ -126,9 +132,6 @@ class MasterJointStatePublisher(Node):
         self._output_topic = str(self.get_parameter('output_topic').value)
         self._joint_names: List[str] = list(
             self.get_parameter('joint_names').value
-        )
-        self._min_interval_ns = int(
-            1e9 / max(float(self.get_parameter('publish_rate_hz').value), 1e-6)
         )
         self._stale_timeout_ns = int(
             float(self.get_parameter('stale_timeout_sec').value) * 1e9
@@ -147,19 +150,16 @@ class MasterJointStatePublisher(Node):
         )
         self._stale_timer = self.create_timer(check_period, self._check_stale)
 
-        now = self.get_clock().now()
         self._last_rx_time = None
-        self._last_pub_time = None
         self._received_any = False
         self._was_stale = False
         self._published_count = 0
         self._dropped_count = 0
         self.get_logger().info(
             f'master_joint_state_publisher: {self._input_topic} -> '
-            f'{self._output_topic} @ {self.get_parameter("publish_rate_hz").value} Hz, '
+            f'{self._output_topic} (immediate republish), '
             f'joints={self._joint_names}'
         )
-        _ = now  # (clock anchored lazily on first message)
 
     def _on_joint_state(self, msg: JointState) -> None:
         now = self.get_clock().now()
@@ -180,16 +180,8 @@ class MasterJointStatePublisher(Node):
             )
             return
 
-        if (
-            self._last_pub_time is not None
-            and (now - self._last_pub_time).nanoseconds < self._min_interval_ns
-        ):
-            self._dropped_count += 1
-            return  # rate limiter: driver is faster than publish_rate_hz
-
-        out = build_master_msg(msg, self._joint_names)
+        out = build_master_msg(msg, self._joint_names, self.get_clock().now().to_msg())
         self._pub.publish(out)
-        self._last_pub_time = now
         self._published_count += 1
         if self._published_count == 1:
             self.get_logger().info(

@@ -9,8 +9,7 @@
 # Hardware checklist (no code changes needed, values only):
 #   1. input_topic matches the driver's namespaced output:
 #      input_topic: "/master_raw/joint_states" with driver namespace master_raw.
-#   2. Tune publish_rate_hz to the teleop need (<= driver rate; 50 Hz default).
-#   3. Put the master arm in compliant/learning mode so joints can be moved by hand.
+#   2. Put the master arm in compliant/learning mode so joints can be moved by hand.
 #
 # Ned2 joint interface (measured state, radians, base -> tip):
 #   names = [joint_1, joint_2, joint_3, joint_4, joint_5, joint_6], count = 6.
@@ -19,7 +18,6 @@ master_joint_state_publisher:
     input_topic: "/master_raw/joint_states"
     output_topic: "/master/joint_states"
     joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
-    publish_rate_hz: 50.0
     qos_depth: 10
     stale_timeout_sec: 1.0
     require_exact_joint_names: true

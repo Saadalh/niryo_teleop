@@ -130,9 +130,8 @@ Edit `src/niryo_teleop/config/master_params.yaml`:
 
 - `input_topic`: the driver's topic from step 4 (e.g. `/master_raw/joint_states`;
   `/joint_states` if you ran the driver without a namespace).
-- `publish_rate_hz`: set **≥** the measured driver rate for a lossless relay
-  (e.g. driver at ~30 Hz → keep 50). A cap below the driver rate throttles
-  output by design.
+- The relay republishes every valid message immediately with a workstation-local
+  timestamp (no rate limiting, no `publish_rate_hz` to tune).
 - Leave `joint_names` as `[joint_1..joint_6]` and `require_exact_joint_names`
   on unless you know why to relax it.
 
@@ -220,6 +219,5 @@ publishing actor commands on /actor/joint_cmd ...
 | Jittery rates over Wi-Fi | Link jitter → switch to Ethernet, whitelist only needed topics |
 | Node aborts: `param joint_scale has length…` | Vector param length ≠ 6 → fix `teleop_params.yaml` |
 
-Site-specific values you must fill in on the day: robot hostname/IP, driver
-namespace (hence `input_topic`), and the measured driver rate (hence
-`publish_rate_hz`). Everything else ships with working defaults.
+Site-specific values you must fill in on the day: robot hostname/IP and driver
+namespace (hence `input_topic`). Everything else ships with working defaults.

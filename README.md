@@ -118,8 +118,9 @@ Physical Ned2 master
 ```
 
 The node subscribes the driver's topic, validates (sizes, exact Ned2 joint
-names, finite positions), rate-caps via `publish_rate_hz`, and republishes
-preserving `header.stamp` and joint order. `velocity`/`effort` are forwarded
+names, finite positions), and immediately republishes every valid message,
+re-stamping `header.stamp` with the workstation ROS 2 clock (robot clock not
+trusted) while preserving `frame_id` and joint order. `velocity`/`effort` are forwarded
 only when present with matching length, else published empty — never
 fabricated. No input beyond `stale_timeout_sec` → throttled warnings, nothing
 stale published; recovers automatically. Robot IP/port/namespace live in the
@@ -153,14 +154,11 @@ ros2 topic hz --window 30 /master/joint_states
 ```
 
 Manual-move check: put the master in learning/compliant mode, move it by hand,
-`position[]` must track. Verified here with `scripts/mock_ned2_driver.py`
-(sine sweep): two `--field position` samples 1 s apart differed on all joints;
-`hz` showed ~31 Hz against a 50 Hz mock (equal-rate phase beating of the
-rate cap — set `publish_rate_hz` ≥ driver rate for a lossless relay).
+`position[]` must track. Relay is 1:1 with no rate limiting, so if the driver
+runs at ~50 Hz, `/master/joint_states` should also run at ~50 Hz.
 
 Remaining hardware-dependent config: driver robot IP/hostname + namespace
-(`input_topic` must match), `publish_rate_hz` vs measured driver rate
-(`ros2 topic hz /joint_states`), learning-mode enable for hand-guiding.
+(`input_topic` must match) and learning-mode enable for hand-guiding.
 
 ## Chunk 4 — teleoperation controller
 
