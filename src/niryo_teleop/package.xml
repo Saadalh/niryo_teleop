@@ -3,7 +3,7 @@
 <package format="3">
   <name>niryo_teleop</name>
   <version>0.1.0</version>
-  <description>Teleoperation pipeline between two Niryo Ned2 arms: master state publisher and joint teleop controller.</description>
+  <description>Teleoperation pipeline between two Niryo Ned2 arms: master/actor state publishers and joint teleop controller.</description>
 
   <maintainer email="rahmlab@todo.todo">rahmlab</maintainer>
   <license>Apache-2.0</license>

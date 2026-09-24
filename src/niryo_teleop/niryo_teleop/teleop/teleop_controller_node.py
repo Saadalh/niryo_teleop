@@ -307,7 +307,10 @@ def main(args=None) -> None:
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        # Launch may already have shut the context down on SIGINT; guard
+        # so Ctrl-C exits cleanly instead of raising RCLError noise.
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

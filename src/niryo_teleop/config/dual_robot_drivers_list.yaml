@@ -1,0 +1,23 @@
+# Dual-robot driver example for niryo_ned_ros2_driver (both Ned2 arms).
+#
+# This uses the driver's REQUIRED format (robot_ips + robot_namespaces, one
+# shared rosbridge_port). Replace the placeholder IPs with your robots'
+# addresses, then pass this file to the driver launch:
+#
+#   ros2 launch niryo_ned_ros2_driver driver.launch.py \
+#     drivers_list_file:=<path-to-this-file>
+#
+# Do NOT edit the driver package itself; keep this example in this repo.
+# Both robots must expose rosbridge on the same port (default 9090).
+# After launch, confirm live:
+#   ros2 topic list | grep -E 'master_raw|actor_raw'
+#   ros2 action list | grep follow_joint_trajectory
+rosbridge_port: 9090
+
+robot_namespaces:
+  - "master_raw"
+  - "actor_raw"
+
+robot_ips:
+  - "169.254.200.200"
+  - "169.254.200.201"

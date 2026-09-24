@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='rahmlab',
     maintainer_email='rahmlab@todo.todo',
-    description='Niryo Ned2 teleoperation: master node + teleop controller.',
+    description='Niryo Ned2 teleoperation: master/actor nodes + teleop controller.',
     license='Apache-2.0',
     entry_points={
         'console_scripts': [
@@ -27,6 +27,8 @@ setup(
             'master_joint_state_publisher = niryo_teleop.master.master_joint_state_publisher:main',
             'teleop_controller_node = niryo_teleop.teleop.teleop_controller_node:main',
             'teleoperation_controller = niryo_teleop.teleop.teleop_controller_node:main',
+            'actor_controller = niryo_teleop.actor.actor_controller:main',
+            'actor_joint_state_publisher = niryo_teleop.actor.actor_joint_state_publisher:main',
         ],
     },
 )

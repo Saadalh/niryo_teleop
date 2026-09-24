@@ -1,0 +1,40 @@
+# Actor side configuration (Ned2 follower, two-robot teleoperation).
+#
+# All site-specific values live here, never in Python code. Tune the sync and
+# streaming behavior before the first physical test; keep motions small/slow.
+actor_controller:
+  ros__parameters:
+    # Desired actor motion from teleoperation_controller:
+    actor_command_topic: "/actor/joint_cmd"
+    # Measured actor pose used for the INITIALIZING sync comparison:
+    actor_measured_state_topic: "/actor/joint_states"
+    # Official Niryo action bridged by niryo_ned_ros2_driver for actor_raw.
+    # Confirm live with: ros2 action list | grep follow_joint_trajectory
+    actor_follow_joint_trajectory_action: "/actor_raw/niryo_robot_follow_joint_trajectory_controller/follow_joint_trajectory"
+    joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    # Fixed-rate send loop; subscriber may receive faster, only latest is sent:
+    actor_send_rate_hz: 10.0
+    # Local-reception freshness gate; stale commands are never sent/replayed:
+    command_stale_timeout_sec: 0.5
+    measured_state_stale_timeout_sec: 1.0
+    # One-shot sync move before live teleop (keep master still during this):
+    initial_sync_duration_sec: 3.0
+    initial_sync_tolerance_rad: 0.05
+    # Identical poses within this are not resent:
+    motion_epsilon_rad: 0.002
+    # Sub-second goals are rejected by the Niryo controller; shorter
+    # trajectories are stretched to at least this horizon before sending:
+    min_goal_duration_sec: 1.0
+    action_server_timeout_sec: 5.0
+    # Re-arm the send gate if a goal result never arrives (hung goal):
+    goal_result_timeout_sec: 5.0
+    qos_depth: 10
+
+actor_joint_state_publisher:
+  ros__parameters:
+    actor_state_input_topic: "/actor_raw/joint_states"
+    actor_state_output_topic: "/actor/joint_states"
+    joint_names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    qos_depth: 10
+    stale_timeout_sec: 1.0
+    require_exact_joint_names: true
