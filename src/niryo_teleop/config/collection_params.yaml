@@ -1,0 +1,60 @@
+# Dataset collection configuration.
+#
+# The collector reads this file directly (no ROS parameters). Override the path
+# with --config or NIRYO_COLLECTION_CONFIG.
+#
+# datasets_dir is resolved relative to the repository root unless absolute.
+# Recorded datasets are written to <datasets_dir>/<dataset-name>.
+
+collection:
+  datasets_dir: "datasets"
+  default_name_prefix: "niryo-dataset"
+  task: "Teleoperate the Ned2"
+  fps: 30
+  # Safety cap: an episode stops automatically after this many seconds.
+  max_episode_seconds: 300
+  # Safety cap: 0 means no limit; stop with Ctrl-X between episodes.
+  max_episodes: 0
+  # Wait for the joint-state topics (s) and for LIVE_TELEOP after enabling (s).
+  stream_timeout_sec: 20.0
+  enable_timeout_sec: 30.0
+
+  camera:
+    enabled: true
+    # Dataset feature name: observation.images.<name>
+    name: "front"
+    # Device path or index, e.g. "/dev/video0" or 0.
+    index_or_path: "/dev/video0"
+    width: 640
+    height: 480
+    fps: 30
+    # LeRobot/Rerun preview window; falls back to OpenCV if rerun is missing.
+    display_mode: "rerun"
+
+  robots:
+    master_ip: "169.254.200.200"
+    actor_ip: "169.254.200.201"
+    # pyniryo auto-calibration before the session.
+    calibrate: true
+    # Master must be hand-movable; actor must be stiff.
+    master_learning_mode: true
+    actor_learning_mode: false
+
+  topics:
+    master: "/master/joint_states"
+    actor_state: "/actor/joint_states"
+    actor_cmd: "/actor/joint_cmd"
+    actor_status: "/actor/controller_status"
+    enable_service: "/actor_controller/enable"
+
+  joints:
+    names: ["joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6"]
+    # Ned2 command limits (radians), shared with teleop_params.yaml.
+    limits_min: [-2.999871918328051, -1.8325957145941667, -1.3400637996813345, -2.090031779263347, -1.9200367101190883, -2.530029283691147]
+    limits_max: [2.999871918328051, 0.6101671064972578, 1.4922565104552499, 2.090031779263347, 1.9228292369222795, 2.530029283691147]
+
+  teleop:
+    # Pre-record bridge rate (master -> actor while waiting for Enter).
+    control_rate_hz: 10.0
+    # Command horizon; actor_controller floors/zeroes it for the robot.
+    time_from_start_sec: 0.2

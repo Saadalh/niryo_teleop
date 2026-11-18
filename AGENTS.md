@@ -139,10 +139,13 @@ required and unavailable, state explicitly what remains unverified.
 ## 11. Current status
 
 Implemented: master state relay, identity teleoperation controller, actor
-controller with sync and stale safety, dual-robot runtime, mock-driver flow,
-unit tests.
+controller with sync, gating (`auto_start`, `/actor/controller_status`,
+`/actor_controller/enable`), stale safety, dual-robot runtime, mock-driver flow,
+unit tests, LeRobot adapters (`niryo_ned2_follower` / `niryo_ned2_leader`), and
+the prompt-driven `niryo-collect` session (pyniryo calibration, camera preview,
+Enter/Ctrl-X episodes, LeRobotDataset v3.0 output).
 
-Planned: LeRobot plugin implementation, camera observations, dataset recording
-and validation, `vlas` training hand-off, policy rollout.
+Planned: physical recording and dataset QA, replay, `vlas` training hand-off,
+policy rollout.
 
 Do not implement planned features unless the task explicitly asks for them.

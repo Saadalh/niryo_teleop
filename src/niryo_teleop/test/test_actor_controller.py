@@ -401,3 +401,65 @@ def test_actor_params_yaml_valid():
     relay = data['actor_joint_state_publisher']['ros__parameters']
     assert relay['actor_state_input_topic'] == '/actor_raw/joint_states'
     assert relay['actor_state_output_topic'] == '/actor/joint_states'
+
+
+def test_gated_controller_sends_nothing_until_enabled(monkeypatch):
+    import rclpy
+    from std_srvs.srv import Trigger
+
+    monkeypatch.setattr(
+        ActorController,
+        '_wait_for_server',
+        lambda self, timeout_sec=1.0: True,
+    )
+    rclpy.init(
+        args=[
+            '--ros-args',
+            '-r',
+            '__node:=actor_controller_gated',
+            '-p',
+            'auto_start:=false',
+        ]
+    )
+    node = ActorController()
+    try:
+        assert node._enabled is False
+        assert node._state == 'WAITING_FOR_ENABLE'
+        sent = []
+        monkeypatch.setattr(node, '_send_goal', lambda traj, is_init=False: sent.append(traj))
+
+        _give_fresh_cmd_and_measured(node, [0.2] * 6, [0.2] * 6)
+        node._tick()
+        assert sent == []
+        assert node._state == 'WAITING_FOR_ENABLE'
+
+        response = node._on_enable(None, Trigger.Response())
+        assert response.success
+        assert node._state == 'INITIALIZING'
+
+        node._tick()  # measured already equals target, so no sync goal is sent
+        assert sent == []
+        assert node._state == 'LIVE_TELEOP'
+
+        again = node._on_enable(None, Trigger.Response())
+        assert again.success
+        assert 'already enabled' in again.message
+    finally:
+        _teardown_node(node)
+
+
+def test_auto_start_controller_starts_in_initializing(monkeypatch):
+    import rclpy
+
+    monkeypatch.setattr(
+        ActorController,
+        '_wait_for_server',
+        lambda self, timeout_sec=1.0: True,
+    )
+    rclpy.init()
+    node = ActorController()
+    try:
+        assert node._enabled is True
+        assert node._state == 'INITIALIZING'
+    finally:
+        _teardown_node(node)

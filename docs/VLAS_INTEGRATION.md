@@ -59,11 +59,20 @@ Stable, versioned surface that `vlas` may rely on:
 | Topic | `/master/joint_states` (`sensor_msgs/msg/JointState`) |
 | Topic | `/actor/joint_cmd` (`trajectory_msgs/msg/JointTrajectory`) |
 | Topic | `/actor/joint_states` (`sensor_msgs/msg/JointState`) |
+| Topic | `/actor/controller_status` (`std_msgs/msg/String`, transient-local) |
+| Service | `/actor_controller/enable` (`std_srvs/srv/Trigger`) |
 | Launch | `niryo_teleop master.launch.py` |
 | Launch | `niryo_teleop teleop.launch.py` |
 | Launch | `niryo_teleop full_teleop.launch.py` |
+| Launch | `niryo_teleop collection.launch.py` (relays + gated actor controller) |
 | Plugin | `lerobot_robot_niryo` with `niryo_ned2_follower` / `niryo_ned2_leader` |
-| CLI | `lerobot-record` with the plugin types |
+| CLI | `niryo-collect` (prompt-driven collection session) |
+
+The actor controller reports `WAITING_FOR_ENABLE`, `INITIALIZING`, or
+`LIVE_TELEOP`. `collection.launch.py` starts it gated (`auto_start: false`) so
+calibration cannot move the arm; the collector calls the enable service once
+the bench is ready. `teleop.launch.py` and `full_teleop.launch.py` keep the
+historical auto-start behaviour.
 
 Changing a topic name, message type, launch argument, or plugin identifier is a
 breaking change: update this document, the README, and the `vlas` workflows in
@@ -82,16 +91,22 @@ the same change.
 
 ## Dataset rules
 
-- Format is always LeRobotDataset v3.0, written by `lerobot-record`.
-- Dataset roots live under `vlas/datasets/` and are passed explicitly.
-- `repo_id` uses the `local/…` namespace unless the user requests a Hub push.
+- Format is always LeRobotDataset v3.0, written by `niryo-collect` /
+  `LeRobotDataset`; never a custom format.
+- Dataset roots come from `collection.datasets_dir` (relative paths resolve
+  against the repository root) or `--datasets-dir`; when this repository is a
+  submodule, point it at `vlas/datasets/`.
+- `repo_id` uses the `local/…` namespace; nothing is pushed to the Hub.
 - Recorded data is never committed to either repository.
 
 ## Verification before integrating
 
 1. `colcon build` succeeds and the existing pytest suite is green.
-2. The no-hardware flow produces both teleoperation topics.
+2. The no-hardware flow produces both teleoperation topics and leaves the
+   actor controller gated.
 3. `pip show lerobot_robot_niryo` resolves to the submodule path.
-4. `lerobot-record --help` lists the plugin types without import errors.
+4. `niryo-collect --help` and the plugin suite
+   (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 <vlas>/.venv/bin/python -m pytest
+   lerobot_plugin/tests -q`) succeed in the `vlas` environment.
 5. A tiny dataset is written, reopened with `LeRobotDataset`, and deleted.
 6. `git status` in both repositories shows no generated artifacts.

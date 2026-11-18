@@ -35,3 +35,18 @@ Known issues and fixes for the teleoperation stack. Start with
 
 Site-specific values to fill in on the day: robot hostnames/IPs and driver
 namespaces (hence `input_topic`). Everything else ships with working defaults.
+
+## Dataset collection
+
+| Symptom | Cause → fix |
+|---|---|
+| `symbol lookup error: …libcontrol_msgs…undefined symbol …fastcdr…Cdr9serializeEj` as soon as a goal is sent | Installed `ros-jazzy-control-msgs` was built against a newer Fast-CDR than `ros-jazzy-fastcdr` 2.2.5. Upgrade the pair: `sudo apt update && sudo apt install --only-upgrade ros-jazzy-fastcdr ros-jazzy-control-msgs`, then re-open the terminals. Verify with `python3 -c "from rclpy.serialization import serialize_message; from control_msgs.action import FollowJointTrajectory as A; serialize_message(A.Goal())"`. |
+| `actor_controller gated: call the "enable" service…` in the log | Expected with `collection.launch.py`; the controller stays safe until `niryo-collect` reaches the ready prompt. To drive it manually: `ros2 service call /actor_controller/enable std_srvs/srv/Trigger`. |
+| `enable service not available` | Runtime not launched (or launched from a stale `install/`) → `--no-runtime` only when the logic nodes are already running; otherwise rebuild and relaunch. |
+| Collector times out with `actor did not reach LIVE_TELEOP` | The sync needs a fresh, steady master pose. Keep the master still, make sure `/actor/joint_cmd` is being published (the collector's bridge does this), and confirm the driver's action server: `ros2 action list | grep follow_joint_trajectory`. |
+| `no fresh master state on /master/joint_states` / `no fresh actor state …` | Driver or relay not running, wrong namespace, or actor state relay missing → check `ros2 topic hz` for both `_raw` and relayed topics. |
+| `Rerun preview unavailable … falling back to OpenCV` | `rerun-sdk` is not installed in the active environment → `uv pip install rerun-sdk`, or set `camera.display_mode: opencv` / record with `--no-camera`. |
+| Camera connect fails / `--no-camera` used intentionally | `/dev/video*` missing or busy (another process holds it) → `ls -l /dev/video*`, close other camera apps, fix `camera.index_or_path`. |
+| `pyniryo` import installs OpenCV 5.x and LeRobot cameras break | `pyniryo` declares an unpinned OpenCV dependency → install `pyniryo` together with `"opencv-python==4.13.0.92"` in the same command so the pin wins. |
+| Episodes are recorded but the dataset name already exists | The collector appends `-2`, `-3`, … instead of overwriting; check `datasets/` before assuming a failed save. |
+| Ctrl-X does nothing | It is only accepted *between* episodes, while the Enter prompt is shown. Press Enter to stop the current episode first. |

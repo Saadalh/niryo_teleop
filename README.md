@@ -32,14 +32,16 @@ training/deployment lives in the separate `vlas` project.
   `FollowJointTrajectory` action, including a startup sync and stale-command
   safety.
 - Dual-robot operation with namespaced driver topics.
+- LeRobot adapters (`niryo_ned2_follower` / `niryo_ned2_leader`) and
+  prompt-driven dataset collection into LeRobotDataset v3.0 (joint state,
+  action, USB camera video).
 - Hardware-free test flow with a mock driver.
-- Unit tests for relay, mapping, limits, and actor safety.
+- Unit tests for relay, mapping, limits, actor safety, and the dataset schema.
 
 **Next phase (not implemented yet)**
 
-- LeRobot-native dataset collection (`lerobot-record`).
-- USB camera as a dataset observation.
-- Language/task annotations and dataset QA.
+- Dataset QA, replay, and hand-off to `vlas` training.
+- Language/task annotation variants beyond one instruction per dataset.
 
 ## Project structure
 
@@ -50,7 +52,7 @@ niryo_teleop/                  # colcon workspace + uv project
 │   ├── launch/                # master, teleop, full_teleop
 │   ├── config/                # all tunable parameters
 │   └── test/                  # ROS-level unit tests
-├── lerobot_plugin/            # scaffolding for the LeRobot integration
+├── lerobot_plugin/            # LeRobot adapters + `niryo-collect`
 ├── scripts/                   # mock driver and environment checks
 ├── docs/                      # setup, collection, integration notes
 └── tests/                     # workspace smoke tests
@@ -148,36 +150,52 @@ ros2 topic hz /master/joint_states /actor/joint_cmd /actor/joint_states
 Keep the master still during the actor's initial sync (about 3 s), then move
 slowly. Ctrl-C the teleop launch before the driver.
 
+### Dataset collection (dual robot + camera)
+
+The driver must already be publishing both `_raw` joint states. Then:
+
+```bash
+cd ~/projects/niryo_teleop
+source /opt/ros/jazzy/setup.bash && source install/setup.bash
+source /path/to/vlas/.venv/bin/activate                # provides lerobot + pyniryo
+uv pip install -e lerobot_plugin                        # once
+niryo-collect
+```
+
+The session asks for two confirmations (safety, environment), calibrates with
+`pyniryo`, opens the camera preview, syncs the actor, then records one episode
+per Enter press. Ctrl-X between episodes finishes and names the dataset.
+Datasets go to `datasets/<name>` by default; edit
+`src/niryo_teleop/config/collection_params.yaml` to change paths, camera, fps,
+or limits.
+
 ## Future plan
 
-1. **Dataset collection (next)** — implement LeRobot `Robot` and
-   `Teleoperator` adapters around the existing ROS topics, add a USB camera,
-   and record episodes with `lerobot-record` into LeRobotDataset v3.0.
-2. **Dataset quality** — episode/task conventions, validation, replay, and
-   dataset summaries.
-3. **VLA training (in `vlas`)** — fine-tune GR00T or SmolVLA on the recorded
+1. **Dataset quality (next)** — episode/task conventions, validation, replay,
+   and dataset summaries.
+2. **VLA training (in `vlas`)** — fine-tune GR00T or SmolVLA on the recorded
    datasets.
-4. **Policy deployment** — run a trained policy on the actor Ned2 with a safe
+3. **Policy deployment** — run a trained policy on the actor Ned2 with a safe
    command envelope and evaluation protocol.
-5. **Integration** — keep this repository self-contained so it can be added to
+4. **Integration** — keep this repository self-contained so it can be added to
    `vlas` as a submodule without path or packaging changes.
 
 **Non-goals for now:** simulation/digital-twin integration, policy code in
 this repository, and any custom dataset format. LeRobot is used wherever
 possible.
 
-See [`docs/DATA_COLLECTION.md`](docs/DATA_COLLECTION.md) and
-[`docs/VLAS_INTEGRATION.md`](docs/VLAS_INTEGRATION.md) for the planned design.
+See [`docs/DATA_COLLECTION.md`](docs/DATA_COLLECTION.md) for the collection
+workflow and [`docs/VLAS_INTEGRATION.md`](docs/VLAS_INTEGRATION.md) for the
+integration contract.
 
 ## Documentation
 
 - [`docs/PHYSICAL_SETUP.md`](docs/PHYSICAL_SETUP.md) — robot prep, driver
   bridge, first physical session, safety.
-- [`docs/DATA_COLLECTION.md`](docs/DATA_COLLECTION.md) — planned LeRobot
-  collection pipeline.
+- [`docs/DATA_COLLECTION.md`](docs/DATA_COLLECTION.md) — collection session,
+  configuration, dataset schema.
 - [`docs/VLAS_INTEGRATION.md`](docs/VLAS_INTEGRATION.md) — submodule and
   integration contract.
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — known issues and fixes.
 - [`AGENTS.md`](AGENTS.md) — development rules for coding agents.
-- [`lerobot_plugin/README.md`](lerobot_plugin/README.md) — planned LeRobot
-  plugin layout.
+- [`lerobot_plugin/README.md`](lerobot_plugin/README.md) — LeRobot plugin usage.

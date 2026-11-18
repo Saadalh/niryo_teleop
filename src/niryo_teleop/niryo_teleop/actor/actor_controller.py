@@ -42,10 +42,13 @@ from typing import List, Sequence, Tuple
 import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from action_msgs.msg import GoalStatus
 from builtin_interfaces.msg import Time
 from control_msgs.action import FollowJointTrajectory
 from sensor_msgs.msg import JointState
+from std_msgs.msg import String
+from std_srvs.srv import Trigger
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from niryo_teleop.master.master_joint_state_publisher import (
@@ -185,6 +188,13 @@ class ActorController(Node):
         self.declare_parameter('action_server_timeout_sec', 5.0)
         self.declare_parameter('goal_result_timeout_sec', 5.0)
         self.declare_parameter('qos_depth', 10)
+        # Collection pipelines start the controller gated so calibration and
+        # bench preparation cannot trigger a sync move. Live teleoperation keeps
+        # the historical auto-start behavior.
+        self.declare_parameter('auto_start', True)
+        self.declare_parameter(
+            'status_topic', '/actor/controller_status'
+        )
 
         self._joint_names: List[str] = list(self.get_parameter('joint_names').value)
         self._action_name = str(
@@ -214,6 +224,19 @@ class ActorController(Node):
             self.get_parameter('goal_result_timeout_sec').value
         )
         depth = int(self.get_parameter('qos_depth').value)
+        self._auto_start = bool(self.get_parameter('auto_start').value)
+
+        status_qos = QoSProfile(
+            depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL
+        )
+        self._status_pub = self.create_publisher(
+            String,
+            str(self.get_parameter('status_topic').value),
+            status_qos,
+        )
+        self._enable_srv = self.create_service(
+            Trigger, '~/enable', self._on_enable
+        )
 
         self._client: ActionClient = ActionClient(
             self, FollowJointTrajectory, self._action_name
@@ -239,7 +262,8 @@ class ActorController(Node):
         self._latest_measured = None
         self._latest_measured_rx_sec = 0.0
         self._last_sent_positions = None
-        self._state = 'INITIALIZING'
+        self._enabled = self._auto_start
+        self._state = 'INITIALIZING' if self._enabled else 'WAITING_FOR_ENABLE'
         # Single outstanding goal shared by init + live paths. A new goal is
         # only sent once the previous one completes (or the watchdog fires),
         # so goals can never overlap and preempt each other on the robot.
@@ -253,8 +277,15 @@ class ActorController(Node):
             f'waiting for action server {self._action_name} '
             f'(up to {server_timeout} s)'
         )
-        self._server_ready = self._wait_for_server(server_timeout)
-        if not self._server_ready:
+        if self._enabled:
+            self._server_ready = self._wait_for_server(server_timeout)
+        else:
+            self._server_ready = False
+            self.get_logger().info(
+                'actor_controller gated: call the "enable" service to start '
+                'the initial sync and live teleoperation'
+            )
+        if not self._server_ready and self._enabled:
             self.get_logger().error(
                 f'action server {self._action_name} not available yet; '
                 'actor stays in INITIALIZING until it appears'
@@ -262,8 +293,37 @@ class ActorController(Node):
         self.get_logger().info(
             f'actor_controller: {self.get_parameter("actor_command_topic").value} -> '
             f'{self._action_name} @ {self._send_rate} Hz '
-            f'(INITIALIZING: sync to master pose first)'
+            f'(state={self._state})'
         )
+        self._publish_status()
+
+    def _publish_status(self) -> None:
+        """Publish the controller state for collection orchestration."""
+        msg = String()
+        msg.data = self._state
+        self._status_pub.publish(msg)
+
+    def _set_state(self, state: str) -> None:
+        if state == self._state:
+            return
+        self._state = state
+        self._publish_status()
+
+    def _on_enable(self, request, response):
+        """Enable motion after calibration/bench preparation."""
+        del request
+        if self._enabled:
+            response.success = True
+            response.message = f'already enabled (state={self._state})'
+            return response
+        self._enabled = True
+        self._set_state('INITIALIZING')
+        self.get_logger().info(
+            'actor_controller enabled; syncing the actor to the master pose'
+        )
+        response.success = True
+        response.message = 'enabled'
+        return response
 
     def _now_sec(self) -> float:
         return float(self.get_clock().now().nanoseconds) * 1e-9
@@ -295,6 +355,8 @@ class ActorController(Node):
         return (self._now_sec() - rx_sec) <= timeout_sec
 
     def _tick(self) -> None:
+        if not self._enabled:
+            return  # gated until calibration/bench preparation is complete
         self._check_goal_watchdog()
         if self._state == 'INITIALIZING':
             self._tick_initializing()
@@ -348,8 +410,8 @@ class ActorController(Node):
         target = target_positions(self._latest_cmd)
         measured = list(self._latest_measured.position)
         if max_abs_diff(measured, target) <= self._sync_tolerance:
-            self._state = 'LIVE_TELEOP'
             self._last_sent_positions = list(target)
+            self._set_state('LIVE_TELEOP')
             self.get_logger().info(
                 'actor already at master pose; entering LIVE_TELEOP'
             )
