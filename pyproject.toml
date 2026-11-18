@@ -1,7 +1,7 @@
 [project]
 name = "niryo-teleop"
 version = "0.1.0"
-description = "ROS 2 teleoperation pipeline between two Niryo Ned2 robots (master + actor) — workspace tooling"
+description = "Ned2-to-Ned2 teleoperation stack for VLA dataset collection — workspace tooling"
 readme = "README.md"
 requires-python = "==3.12.*"
 # NOTE: ROS 2 system deps (rclpy, sensor_msgs, trajectory_msgs, ...) are

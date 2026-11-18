@@ -1,0 +1,17 @@
+[project]
+name = "lerobot_robot_niryo"
+version = "0.0.0"
+description = "LeRobot Robot/Teleoperator adapters for the Niryo Ned2 teleoperation stack (scaffold)"
+readme = "README.md"
+requires-python = "==3.12.*"
+# Deliberately empty: rclpy and ROS message packages come from the ROS
+# installation, while lerobot comes from the vlas environment. Adding them as
+# PyPI dependencies would install incompatible duplicates.
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lerobot_robot_niryo"]

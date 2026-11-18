@@ -11,3 +11,6 @@ log/
 
 # pytest
 .pytest_cache/
+
+# recorded datasets (never commit episodes or videos)
+datasets/

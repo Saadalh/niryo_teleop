@@ -1,5 +1,9 @@
 # Physical setup & getting started with Ned2 teleoperation
 
+> The next phase — recording these demonstrations as a LeRobot dataset — is
+> planned in [`DATA_COLLECTION.md`](DATA_COLLECTION.md). It is not implemented
+> yet.
+
 How to go from boxed robots to a working teleoperation pipeline:
 
 ```text
