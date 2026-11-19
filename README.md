@@ -69,9 +69,18 @@ uv venv --system-site-packages --python /usr/bin/python3.12
 source /opt/ros/jazzy/setup.bash
 source .venv/bin/activate
 uv pip install colcon-common-extensions colcon-ros "pytest==7.4.4"
+# LeRobot, pyniryo, and the pinned OpenCV come from the plugin's own
+# dependencies; the first install downloads ~3 GB (torch). rclpy is not
+# installed here: it comes from the sourced ROS 2 installation.
+uv pip install -e lerobot_plugin
 colcon build
 source install/setup.bash
+source .venv/bin/activate          # keep the env active in this shell
+niryo-collect --help               # sanity check
 ```
+
+That single `.venv` covers teleoperation tooling, the test suites, and dataset
+collection, so no other project or virtualenv is required.
 
 Re-run `colcon build && source install/setup.bash` after every `git pull` or
 config/launch change. `ros2 run` and `ros2 launch` execute `install/`, not
@@ -157,8 +166,7 @@ The driver must already be publishing both `_raw` joint states. Then:
 ```bash
 cd ~/projects/niryo_teleop
 source /opt/ros/jazzy/setup.bash && source install/setup.bash
-source /path/to/vlas/.venv/bin/activate                # provides lerobot + pyniryo
-uv pip install -e lerobot_plugin                        # once
+source .venv/bin/activate          # lerobot, pyniryo, OpenCV (from the install step)
 niryo-collect
 ```
 

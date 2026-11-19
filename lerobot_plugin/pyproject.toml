@@ -4,16 +4,31 @@ version = "0.1.0"
 description = "LeRobot Robot/Teleoperator adapters and collector for the Niryo Ned2 teleoperation stack"
 readme = "README.md"
 requires-python = "==3.12.*"
-# Deliberately empty: rclpy and ROS message packages come from the ROS
-# installation, while lerobot comes from the vlas environment. Adding them as
-# PyPI dependencies would install incompatible duplicates.
-dependencies = []
+# rclpy and the ROS message packages are NOT listed here: they are not PyPI
+# packages and come from the sourced ROS 2 installation. Everything else the
+# collector needs is declared so a fresh clone needs no other project.
+dependencies = [
+  # LeRobot owns the dataset format, video encoding, and the camera stack.
+  # The `dataset` extra is mandatory: lerobot.datasets imports `av`,
+  # `datasets`, `pyarrow`, `pandas`, and `torchcodec` at import time.
+  # 0.7.0 is the first published release whose `record_loop` takes the shared
+  # `CycleTimer` the collector uses; the 0.6.x releases do not have it.
+  "lerobot[dataset]==0.7.0",
+  # Hardware calibration and learning-mode selection.
+  "pyniryo==1.2.5",
+  # pyniryo requires opencv-python>=4.3.0.38 with no upper bound, so a bare
+  # install resolves to OpenCV 5.x and breaks LeRobot's camera code. Both
+  # builds install the same `cv2` package, so they must match exactly.
+  "opencv-python==4.13.0.92",
+  "opencv-python-headless==4.13.0.92",
+  "pyyaml>=6.0",
+  # lerobot imports scipy (pi0_fast) without declaring it. This venv uses
+  # --system-site-packages and pulls numpy 2.x, which is ABI-incompatible with
+  # Ubuntu's system scipy, so the compiled scipy must come from the venv.
+  "scipy>=1.13",
+]
 
 [project.optional-dependencies]
-# pyniryo pulls OpenCV 5.x, which breaks LeRobot's OpenCV cameras. Install it
-# together with a matching opencv-python pin, as done for the vlas venv:
-#   uv pip install pyniryo "opencv-python==4.13.0.92"
-calibration = ["pyniryo"]
 # Rerun preview backend; without it the collector falls back to OpenCV.
 viz = ["rerun-sdk"]
 
